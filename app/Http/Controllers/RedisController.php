@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 
 use App\Utils\Responser;
+
 use Illuminate\Support\Facades\Redis;
 
 /**
@@ -24,7 +25,7 @@ class RedisController extends Controller
     }
 
     /**
-     * 字符串使用
+     * 字符串使用 (使用场景 缓存 点击数统计 浏览统计 加锁)
      * @access public
      * @return \Illuminate\Http\JsonResponse
      */
@@ -58,7 +59,7 @@ class RedisController extends Controller
     }
 
     /**
-     * list的使用
+     * list的使用 (使用场景 消息队列 排行榜 最新列表)
      * @access public
      * @return \Illuminate\Http\JsonResponse
      */
@@ -102,12 +103,109 @@ class RedisController extends Controller
 
     /**
      * set的使用
+     * 使用场景：
+     * 1、标签：比如我们博客网站常常使用到的兴趣标签，把一个个有着相同爱好，关注类似内容的用户利用一个标签把他们进行归并。
+     * 2、共同好友功能，共同喜好，或者可以引申到二度好友之类的扩展应用。
+     * 3、微博应用中，可以将一个用户所有的关注人存在一个集合中，将其所有粉丝存在一个集合。Redis还为集合提供了求交集、并集、差集等操作
      * @access public
-     * @param array $param
-     * @return array
+     * @return \Illuminate\Http\JsonResponse
      */
     public function set()
     {
+        // 将一个或多个成员元素加入到集合中，已经存在于集合的成员元素将被忽略
+        $sadd = Redis::sadd('myset', 'myset_value', 'myset_value2');
+        $sadd = Redis::sadd('myset_two', 'myset_value', 'myset_value_two2');
+        // 返回集合中的所有的成员。 不存在的集合 key 被视为空集合
+        $setData = Redis::smembers('myset');
+        // 返回集合中元素的数量
+        $scard = Redis::scard('myset');
+        // 第一个集合与其他集合之间的差异，也可以认为说第一个集合中独有的元素
+        $sdiff = Redis::sdiff('myset', 'myset_two');
+        // 将给定集合之间的差集存储在指定的集合中。如果指定的集合 key 已存在，则会被覆盖
+        $sdiffstore = Redis::sdiffstore('myset_three', 'myset', 'myset_two');
+        // 返回给定所有给定集合的交集
+        $sinter = Redis::sinter('myset', 'myset_two');
+        // 将给定集合之间的交集存储在指定的集合中。如果指定的集合已经存在，则将其覆盖
+        $sinterstore = Redis::sinterstore('myset_four', 'myset', 'myset_two');
+        // 判断成员元素是否是集合的成员。 成员元素是集合的成员，返回 true 。 如果成员元素不是集合的成员，或 key 不存在，返回 false
+        $sismember = Redis::sismember('myset', 'myset_value');
+        // 将指定成员 myset_value2 元素从 myset 集合移动到 myset_two 集合。SMOVE 是原子性操作
+        $smove = Redis::smove('myset', 'myset_two', 'myset_value2');
+        // 移除集合中的指定 key 的一个或多个随机元素，移除后会返回移除的元素
+        $spop = Redis::spop('myset_two', 1);
+        // 用于返回集合中的一个或多个随机元素
+        $srandmember = Redis::srandmember('myset_two', 1);
+        // 移除集合中的一个或多个成员元素，不存在的成员元素会被忽略 返回值:被成功移除的元素的数量;不包括被忽略的元素
+        $srem = Redis::srem('myset_two', 'myset_value_two2');
+        // 返回给定集合的并集 返回值：并集成员的列表
+        $sunion = Redis::sunion('myset', 'myset_two');
+        // 将给定集合的并集存储在指定的集合 destination 中。如果 destination 已经存在，则将其覆盖 返回值：结果集中的元素数量
+        $sunionstore = Redis::sunionstore('myset_five', 'myset', 'myset_two');
+        // 用于迭代集合中键的元素 筛选数据 分页搜索返回 返回值：数组列表
+        Redis::sadd('myset_sex', 'myset_value', 'hk', 'gk', 'hy', 'ko', 'hp');
+        $sscan = Redis::sscan('myset_sex', 2, ['match' => 'h*', 'count' => 10]);
+        return success();
+    }
 
+    /**
+     * sorted set(有序集合) 的使用
+     * 使用场景：
+     * 1.存储学生成绩快速做成绩排名功能
+     * 2.做带权重的队列 比如普通消息的score为1，重要消息的score为2，然后工作线程可以选择按score的倒序来获取工作任务。让重要的任务优先执行。
+     * 3.排行榜：有序集合经典使用场景。例如视频网站需要对用户上传的视频做排行榜，榜单维护可能是多方面：按照时间、按照播放量、按照获得的赞数等
+     * @access public
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function sortedSet()
+    {
+        // 将一个或多个成员元素及其分数值加入到有序集当中 返回值：被成功添加的新成员的数量，不包括那些被更新的、已经存在的成员
+        $zadd = Redis::zadd('myzset', 1, 'myzset_value', 2 , 'myzset_value2', 2, 'myzset_value3');
+        // 用于计算集合中元素的数量。
+        $zcard = Redis::zcard('myzset');
+        // 用于计算有序集合中指定分数区间的成员数量 (查询排第1到第2的数据个数)
+        $zcount = Redis::zcount('myzset', 1, 2);
+        // 对有序集合中指定成员的分数加上增量
+        $zincrby = Redis::zincrby('myzset', 2, 'myzset_value');
+        // 计算给定的一个或多个有序集的交集，其中给定 key 的数量必须以 numkeys 参数指定，并将该交集(结果集)储存到 destination 。
+        // 将shuxue * 1, yuwen * 2 进行sum,min,max处理
+        $zadd = Redis::zadd('shuxue', 62, 'Li_Lei', 56, 'xiao_ming', 99, 'wang_ba_tian');
+        $zadd = Redis::zadd('yuwen', 72, 'Li_Lei', 54, 'xiao_ming', 88, 'wang_ba_tian');
+        $zinterstore = Redis::zinterstore('sum_point', ['shuxue', 'yuwen'], ['aggregate' => 'sum', 'weights' => [1, 2]]);
+        // 计算给定的一个或多个有序集的并集，其中给定 key 的数量必须以 numkeys 参数指定，并将该并集(结果集)储存到 destination 。
+        $zadd = Redis::zadd('shuxue2', 62, 'Li_Lei', 56, 'xiao_ming', 99, 'wang_ba_tian');
+        $zadd = Redis::zadd('yuwen2', 72, 'Li_Lei', 54, 'xiao_ming', 88, 'wang_ba_tian');
+        $zunionstore = Redis::zunionstore('sum_point', ['shuxue2', 'yuwen2'], ['aggregate' => 'sum', 'weights' => [1, 2]]);
+        // 计算有序集合中指定字典区间内成员数量
+        $zlexcount = Redis::zlexcount('sum_point', '-', '+'); // 查全部
+        $zlexcount = Redis::zlexcount('sum_point', '[Li_Lei', '[wang_ba_tian'); // 查区间
+        // 返回有序集中，指定区间内的成员 成员的位置按分数值递增(从小到大)来排序
+        $zrange = Redis::zrange('sum_point', 0, -1, true);
+        // 命令返回有序集中，指定区间内的成员。其中成员的位置按分数值递减(从大到小)来排列。具有相同分数值的成员按字典序的逆序(reverse lexicographical order)排列
+        $zrevrange = Redis::zrevrange('sum_point', 0, -1, true);
+        // 通过字典区间返回有序集合的成员
+        $zrangebylex = Redis::zrangebylex('myzset', '-', '[myzset_value2'); // 包含自己
+        $zrangebylex = Redis::zrangebylex('myzset', '-', '(myzset_value2'); // 不包含自己
+        // 返回有序集合中指定分数区间的成员列表。有序集成员按分数值递增(从小到大)次序排列 -inf(最小) +inf(最大) ( (不包含自己)
+        $zrangebyscore = Redis::zrangebyscore('shuxue', '(62', '99');
+        // 返回有序集中指定分数区间内的所有的成员。有序集成员按分数值递减(从大到小)的次序排列 +inf -inf [ (
+        $zrevrangebyscore = Redis::zrevrangebyscore('shuxue', 55, 65);
+        // 返回有序集中指定成员的排名。其中有序集成员按分数值递增(从小到大)顺序排列 显示 wang_ba_tian 的分数排名，第5
+        $zrank = Redis::zrank('shuxue', 'wang_ba_tian');
+        // 返回有序集中成员的排名。其中有序集成员按分数值递减(从大到小)排序 第2
+        $zrevrank = Redis::zrevrank('shuxue', 'wang_ba_tian');
+        // 用于移除有序集中的一个或多个成员，不存在的成员将被忽略
+        $zrem = Redis::zrem('shuxue', 'wang_ba_tian');
+        // 用于移除有序集合中给定的字典区间的所有成员 xiao_ming-Li_Lei(包含)之间数据删除
+        $zremrangebylex = Redis::zremrangebylex('shuxue', '(xiao_ming', '[Li_Lei');
+        // 用于移除有序集中，指定排名(rank)区间内的所有成员。位置0的数据删除
+        $zremrangebyrank = Redis::zremrangebyrank('shuxue', 0, 0);
+        // 用于移除有序集中，指定分数（score）区间内的所有成员 删除排名55 到 65 之间的
+        $zremrangebyscore = Redis::zremrangebyscore('shuxue', 55, 65);
+        // 返回有序集中，成员的分数值。 如果成员元素不是有序集 key 的成员，或 key 不存在，返回 false
+        $zscore = Redis::zscore('yuwen', 'Li_Lei');
+        // 用于迭代集合中键的元素 筛选数据 分页搜索返回 返回值：数组列表 (遗留：zscan第二个参数除了0，输入其他任何参数，返回值一样)
+        $zadd = Redis::zadd('myzset2', 1, 'gh', 2 , 'gk', 2, 'hk');
+        $zscan = Redis::zscan('myzset2', 1, ['match' => 'g*', 'count' => 10]);
+        return success();
     }
 }

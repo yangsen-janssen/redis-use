@@ -17,3 +17,4 @@ $router->get('/', function () use ($router) {
 $router->post('string', ['uses' => 'RedisController@string', 'as' => 'redis.string', 'name' => '【redis：string类型使用】']);
 $router->post('list', ['uses' => 'RedisController@list', 'as' => 'redis.list', 'name' => '【redis：list类型使用】']);
 $router->post('set', ['uses' => 'RedisController@set', 'as' => 'redis.set', 'name' => '【redis：set类型使用】']);
+$router->post('sorted-set', ['uses' => 'RedisController@sortedSet', 'as' => 'redis.sortedSet', 'name' => '【redis：sorted set类型使用】']);
