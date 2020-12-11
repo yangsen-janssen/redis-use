@@ -14,9 +14,9 @@ redis使用数据类型和场景：
 
 3.set 集合
 
-4.hash hash散列值
+4.sort set 有序集合
 
-5.sort set 有序集合
+5.hash hash散列值
 
 6.pub/sub 发布订阅模式
 

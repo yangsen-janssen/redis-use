@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 
 use App\Utils\Responser;
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redis;
 
 /**
@@ -207,5 +208,131 @@ class RedisController extends Controller
         $zadd = Redis::zadd('myzset2', 1, 'gh', 2 , 'gk', 2, 'hk');
         $zscan = Redis::zscan('myzset2', 1, ['match' => 'g*', 'count' => 10]);
         return success();
+    }
+
+    /**
+     * hash 的使用
+     * 使用场景：
+     * 1.存储用户信息 用户的昵称、年龄、性别、积分
+     * 2.购物车
+     * 3.存储对象
+     * @access public
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function hash()
+    {
+        // 用于为哈希表中的字段赋值 。如果哈希表不存在，一个新的哈希表被创建并进行 HSET 操作。如果字段已经存在于哈希表中，旧值将被覆盖
+        $hset = Redis::hset('myhash', 'field1', 'value1');
+        // 用于同时将多个 field-value (字段-值)对设置到哈希表中。
+        $hmset = Redis::hmset('myhash', 'field2', 5, 'field3', 6);
+        // 查看哈希表的指定字段是否存在。
+        $hexists = Redis::hexists('myhash', 'field1');
+        // 返回哈希表中，所有的字段和值。
+        $hgetall = Redis::hgetall('myhash');
+        // 用于返回哈希表中指定字段的值。
+        $hget = Redis::hget('myhash', 'field1');
+        // 删除哈希表 key 中的一个或多个指定字段，不存在的字段将被忽略
+        $hdel = Redis::hdel('myhash', 'field1');
+        // 用于为哈希表中的字段值加上指定增量值 增量也可以为负数，相当于对指定字段进行减法操作 如果指定的字段不存在，那么在执行命令前，字段的值被初始化为 0
+        $hincrby = Redis::hincrby('myhash', 'field2', 2);
+        // 为哈希表中的字段值加上指定浮点数增量值 如果指定的字段不存在，那么在执行命令前，字段的值被初始化为 0
+        $hincrbyfloat = Redis::hincrbyfloat('myhash', 'field2', 0.4);
+        // 用于获取哈希表中的所有域（field）
+        $hkeys = Redis::hkeys('myhash');
+        // 用于获取哈希表中字段的数量
+        $hlen = Redis::hlen('myhash');
+        // 用于返回哈希表中，一个或多个给定字段的值
+        $hmget = Redis::hmget('myhash', 'field2', 'field3');
+        // 用于为哈希表中不存在的的字段赋值 如果字段已经存在于哈希表中，操作无效
+        $hsetnx = Redis::hsetnx('myhash', 'field3', 'value3');
+        // 返回哈希表所有域(field)的值。
+        $hvals = Redis::hvals('myhash');
+        // 用于迭代集合中键的元素 筛选数据 分页搜索返回 返回值：数组列表 (遗留：zscan第二个参数除了0，输入其他任何参数，返回值一样)
+        $hmset = Redis::hmset('myhashscan', 'hk', 'value1', 'hy', 'value2', 'gy', 'value3');
+        $hscan = Redis::hscan('myhashscan', 1, ['match' => '*y', 'count' => 10]);
+        return success();
+    }
+
+    /**
+     * https://segmentfault.com/a/1190000010287367
+     * 发布订阅模式 的使用
+     * 使用场景：
+     * 1.构建实时消息系统，比如普通的即时聊天，群聊等功能
+     * 2.消息服务
+     * @access public
+     * @param Request $request
+     * @return void
+     */
+    public function pub(Request $request)
+    {
+        // 用于查看订阅与发布系统状态，它由数个不同格式的子命令组成, 查看频道
+        $pubsub = Redis::pubsub('channels');
+        // 用于将信息发送到指定的频道 返回值：接收到信息的订阅者数量
+        $publish = Redis::publish($request->channels, $request->message);
+        return success(['success_num' => $publish]);
+    }
+
+    /**
+     * 查看Console\Commands
+     * 遗留问题：在闭包里面使用不了 redis的任何操作
+     * 问题解决：除了 SUBSCRIBE、PSUBSCRIBE、UNSUBSCRIBE、PUNSUBSCRIBE 这 4 条命令以外，其它命令都不能使用。
+     * 发布订阅模式 的使用
+     * 使用场景：
+     * 1.构建实时消息系统，比如普通的即时聊天，群聊等功能
+     * 2.消息服务
+     * @access public
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function sub()
+    {
+        // 订阅一个或多个符合给定模式的频道
+//        $psubscribe = Redis::psubscribe('runoobChat', function ($redis, $channelName, $message) {
+//            $redis->hset('pubsubhash', $message, date('Y-m-d H:i:s'));
+//        });
+        // 退订所有给定模式的频道
+//        $punsubscribe = Redis::punsubscribe(['runoobChat']);
+        // 用于订阅给定的一个或多个频道的信息
+//        $subscribe = Redis::subscribe(['runoobChat'], function ($message, $channel) {
+//
+//        });
+        // 用于退订给定的一个或多个频道的信息
+//        $unsubscribe = Redis::unsubscribe(['runoobChat']);
+        return success();
+    }
+
+    /**
+     * 事务 的使用
+     * 使用场景：
+     * 1.秒杀系统
+     * 2.支付系统
+     * @access public
+     * @return bool
+     */
+    public function transactions()
+    {
+//        dd(Redis::get('key2'));
+        // 监视一个(或多个)key，如果在事务执行之前这个(或这些) key 被其他命令所改动，那么事务将被打断
+        $watch = Redis::watch(['key1', 'key2']);
+        // 用于监视一个(或多个) key ，如果在事务执行之前这个(或这些) key 被其他命令所改动，那么事务将被打断 模拟监视 key 被打断
+        $data = Redis::set('key1', 'valuehh');
+        // 标记一个事务块的开始。
+        $multi = Redis::transaction(function () {
+            $data = Redis::set('key1', 'valuegg');
+            Redis::set('key2', 'value2');
+        });
+        // 用于取消 WATCH 命令对所有 key 的监视。
+        $unwatch = Redis::unwatch();
+        return true;
+    }
+
+    /**
+     * 脚本 的使用
+     * 使用场景：
+     * @access public
+     * @return void
+     */
+    public function eval()
+    {
+
     }
 }
