@@ -322,17 +322,46 @@ class RedisController extends Controller
         });
         // 用于取消 WATCH 命令对所有 key 的监视。
         $unwatch = Redis::unwatch();
-        return true;
+        return success();
     }
 
     /**
      * 脚本 的使用
      * 使用场景：
+     * 1.Lua大量用于游戏开发中，实现热升级，提升应用扩展性
+     * 1.1 1）活跃用户判断：判断一个游戏用户是否属于活跃用户，如果符合标准，则活跃用户人数+1
+     * 1.2 2）简单DDOS防护：限制n秒内同IP的访问次数
+     * 1.3 3）用户游戏社区判断：判断当前用户是否在多个游戏社区中
+     * 1.4 4）获取游戏商店中的货品：取出hash表中符合条件的对象
+     * 2.数据分析：通过Lua脚本实现数据格式化，提供给软件平台通用接口能力
+     * 2.1 实时平均值统计
+     * redis确保正一条script脚本执行期间，其它任何脚本或者命令都无法执行。
+     * 正是由于这种原子性，script才可以替代MULTI/EXEC作为事务使用。
+     * 当然，官方文档也说了，正是由于script执行的原子性，
+     * 所以我们不要在script中执行过长开销的程序，否则会验证影响其它请求的执行。
      * @access public
      * @return void
      */
     public function eval()
     {
+//        dd(Redis::get('key1'));
+        $key = 'key1';
+        $value = '22';
+        $expire = 10;
+        // 使用 Lua 解释器执行脚本。例子1
+        $script = <<<SCRIPT
+                    return redis.call('SET', KEYS[1], ARGV[1], 'NX', 'EX', ARGV[2])
+SCRIPT;
+        // 第二个参数表示有几个key
+        $eval = Redis::eval($script, 1, $key, $value, $expire);
 
+        // 使用 Lua 解释器执行脚本。例子2
+        $script = <<<SCRIPT
+                    return {KEYS[1],KEYS[2],ARGV[1],ARGV[2]}
+SCRIPT;
+        $eval = Redis::eval($script, 2, 'key1', 'key2', 'argv1', 'argv2');
+        // 根据$script获取缓存在服务器中的脚本。存在则执行缓存的脚本，不存在则执行传入的脚本
+        $evalsha = Redis::evalsha($script, 2, 'key1', 'key2', 'argv1', 'argv2');
+        return success();
     }
 }
